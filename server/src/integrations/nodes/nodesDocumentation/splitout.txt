@@ -1,0 +1,23 @@
+{
+    "payload": {
+        
+    },
+    "config": {
+        "type": "filter",
+        "data": { // depends on your task
+            "condition": [
+                {
+                    "": "age",
+                    "field": ">",
+                    "value": "25"
+                },
+                {
+                    "": "status",
+                    "field": "=",
+                    "value": "active"
+                }
+            ],
+            "logicalOperator": "OR"
+        }
+    }
+}

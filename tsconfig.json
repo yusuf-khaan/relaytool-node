@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    // Module and target
+    "module": "nodenext",
+    "target": "esnext",
+    "types": [
+      "node"
+    ],
+    // Root and output (optional, if you want compiled JS output)
+    "rootDir": "server",
+    "outDir": "dist",
+    // Include source maps for easier debugging
+    "sourceMap": true,
+    // Generate declaration files (optional)
+    "declaration": true,
+    "declarationMap": true,
+    // Type checking
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    // Allow JS files and check them
+    "allowJs": true,
+    "checkJs": false, // true if you want TS to type-check JS as well
+    // Module resolution
+    "esModuleInterop": true,
+    "moduleResolution": "nodenext",
+    "resolveJsonModule": true,
+    // Skip type checking for libraries
+    "skipLibCheck": true
+  },
+  // Include both JS and TS
+  "include": [
+    "server/**/*.ts",
+    "server/**/*.js"
+  ],
+  // Exclude build output and node_modules
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}
