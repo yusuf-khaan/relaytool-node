@@ -1,3 +1,4 @@
+import ApolloProvider from "../integrations/apollo/providers/apolloProvider.js";
 import DiscordProvider from "../integrations/discord/providers/discordProvider.js";
 import GmailProvider from "../integrations/gmail/providers/gmailProvider.js";
 import InstagramProvider from "../integrations/instagram/providers/instagramProvider.js";
@@ -17,7 +18,8 @@ export const ProviderRepository = {
   openai: OpenaiProvider,
   postgres: PostgresProvider,
   sandbox: SandboxProvider,
-  twilio: TwilioProvider
+  twilio: TwilioProvider,
+  apollo: ApolloProvider,
 } as const;
 
 export type ProviderName = keyof typeof ProviderRepository;
