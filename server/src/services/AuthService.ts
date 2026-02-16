@@ -57,6 +57,9 @@ class AuthService {
         const GOOGLE_CLIENT_ID = auth.gmail.client_id;
         const GOOGLE_CLIENT_SECRET = auth.gmail.client_secret;
         const REDIRECT_URI = auth.gmail.redirect_uri;
+        if (!REDIRECT_URI) {
+            throw new Error("GOOGLE redirect URI is not configured");
+        }
         const client = new google.auth.OAuth2(
             GOOGLE_CLIENT_ID,
             GOOGLE_CLIENT_SECRET,
@@ -69,6 +72,7 @@ class AuthService {
                 'https://www.googleapis.com/auth/gmail.readonly',
                 'https://www.googleapis.com/auth/gmail.send'
             ],
+            redirect_uri: REDIRECT_URI,
             state
         });
         return res.redirect(url);
