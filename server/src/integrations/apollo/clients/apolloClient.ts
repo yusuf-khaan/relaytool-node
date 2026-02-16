@@ -108,7 +108,7 @@ export default class ApolloClient extends AbstractApolloClient {
 
   buildSearchContactsPayload() {
     return {
-      filters: {},
+      filters: null,
       page: 1,
       per_page: 25,
     };
@@ -152,7 +152,7 @@ export default class ApolloClient extends AbstractApolloClient {
         schema,
         this.buildSearchOrganizationsPayload()
       );
-       if (payload?.filters && typeof payload?.filters === "string") {
+      if (payload?.filters && typeof payload?.filters === "string") {
         try {
           payload.filters = JSON.parse(payload.filters);
         } catch (e) {
@@ -170,7 +170,7 @@ export default class ApolloClient extends AbstractApolloClient {
 
   buildSearchOrganizationsPayload() {
     return {
-      filters: {},
+      filters: null,
       page: 1,
       per_page: 25,
     };
@@ -208,6 +208,340 @@ export default class ApolloClient extends AbstractApolloClient {
     };
   }
 
+  async createContact(request: any) {
+    if (!this.utilityService) await this.init(request);
+
+    const payload = this.utilityService!.buildPayloadFromSchema(
+      request?.data,
+      request?.schemaData ?? [],
+      this.buildCreateContactPayload()
+    );
+
+    return this.request("/contacts/create", payload, request);
+  }
+
+  async updateContact(request: any) {
+    if (!this.utilityService) await this.init(request);
+
+    const payload = this.utilityService!.buildPayloadFromSchema(
+      request?.data,
+      request?.schemaData ?? [],
+      this.buildUpdateContactPayload()
+    );
+
+    return this.request("/contacts/update", payload, request);
+  }
+
+  async bulkCreateContacts(request: any) {
+    if (!this.utilityService) await this.init(request);
+
+    const payload = this.utilityService!.buildPayloadFromSchema(
+      request?.data,
+      request?.schemaData ?? [],
+      this.buildBulkContactsPayload()
+    );
+
+    return this.request("/contacts/bulk_create", payload, request);
+  }
+
+  async bulkUpdateContacts(request: any) {
+    if (!this.utilityService) await this.init(request);
+
+    const payload = this.utilityService!.buildPayloadFromSchema(
+      request?.data,
+      request?.schemaData ?? [],
+      this.buildBulkContactsPayload()
+    );
+
+    return this.request("/contacts/bulk_update", payload, request);
+  }
+
+  async searchAccounts(request: any) {
+    if (!this.utilityService) await this.init(request);
+
+    const payload = this.utilityService!.buildPayloadFromSchema(
+      request?.data,
+      request?.schemaData ?? [],
+      this.buildSearchAccountsPayload()
+    );
+
+    return this.request("/accounts/search", payload, request);
+  }
+
+  async bulkCreateAccounts(request: any) {
+    if (!this.utilityService) await this.init(request);
+
+    const payload = this.utilityService!.buildPayloadFromSchema(
+      request?.data,
+      request?.schemaData ?? [],
+      this.buildBulkAccountsPayload()
+    );
+
+    return this.request("/accounts/bulk_create", payload, request);
+  }
+
+  async matchPerson(request: any) {
+    if (!this.utilityService) await this.init(request);
+
+    const payload = this.utilityService!.buildPayloadFromSchema(
+      request?.data,
+      request?.schemaData ?? [],
+      this.buildMatchPersonPayload()
+    );
+
+    return this.request("/people/match", payload, request);
+  }
+
+  async bulkMatchPeople(request: any) {
+    if (!this.utilityService) await this.init(request);
+
+    const payload = this.utilityService!.buildPayloadFromSchema(
+      request?.data,
+      request?.schemaData ?? [],
+      this.buildBulkMatchPeoplePayload()
+    );
+
+    return this.request("/people/bulk_match", payload, request);
+  }
+
+  async showPerson(request: any) {
+    if (!this.utilityService) await this.init(request);
+
+    const payload = this.utilityService!.buildPayloadFromSchema(
+      request?.data,
+      request?.schemaData ?? [],
+      this.buildShowPersonPayload()
+    );
+
+    if (!payload.person_id) throw new Error("person_id required");
+
+    return this.request(
+      `/people/show?person_id=${payload.person_id}`,
+      {},
+      request,
+      "GET"
+    );
+  }
+
+  async showOrganization(request: any) {
+    if (!this.utilityService) await this.init(request);
+
+    const payload = this.utilityService!.buildPayloadFromSchema(
+      request?.data,
+      request?.schemaData ?? [],
+      this.buildShowOrganizationPayload()
+    );
+
+    if (!payload.organization_id)
+      throw new Error("organization_id required");
+
+    return this.request(
+      `/organizations/show?organization_id=${payload.organization_id}`,
+      {},
+      request,
+      "GET"
+    );
+  }
+
+  async enrichOrganization(request: any) {
+    if (!this.utilityService) await this.init(request);
+
+    const payload = this.utilityService!.buildPayloadFromSchema(
+      request?.data,
+      request?.schemaData ?? [],
+      this.buildShowOrganizationPayload()
+    );
+
+    return this.request("/organizations/enrich", payload, request);
+  }
+
+  async bulkEnrichOrganizations(request: any) {
+    if (!this.utilityService) await this.init(request);
+
+    const payload = this.utilityService!.buildPayloadFromSchema(
+      request?.data,
+      request?.schemaData ?? [],
+      this.buildBulkEnrichOrganizationsPayload()
+    );
+
+    return this.request("/organizations/bulk_enrich", payload, request);
+  }
+
+  async organizationJobPostings(request: any) {
+    if (!this.utilityService) await this.init(request);
+
+    const payload = this.utilityService!.buildPayloadFromSchema(
+      request?.data,
+      request?.schemaData ?? [],
+      this.buildOrganizationJobPostingsPayload()
+    );
+
+    return this.request("/organizations/job_postings", payload, request);
+  }
+
+  async mixedCompaniesSearch(request: any) {
+    if (!this.utilityService) await this.init(request);
+
+    const payload = this.utilityService!.buildPayloadFromSchema(
+      request?.data,
+      request?.schemaData ?? [],
+      this.buildMixedSearchPayload()
+    );
+
+    return this.request("/mixed_companies/search", payload, request);
+  }
+
+  async mixedPeopleSearch(request: any) {
+    if (!this.utilityService) await this.init(request);
+
+    const payload = this.utilityService!.buildPayloadFromSchema(
+      request?.data,
+      request?.schemaData ?? [],
+      this.buildMixedSearchPayload()
+    );
+
+    return this.request("/mixed_people/api_search", payload, request);
+  }
+
+  async organizationTopPeople(request: any) {
+    if (!this.utilityService) await this.init(request);
+
+    const payload = this.utilityService!.buildPayloadFromSchema(
+      request?.data,
+      request?.schemaData ?? [],
+      this.buildShowOrganizationPayload()
+    );
+
+    return this.request(
+      "/mixed_people/organization_top_people",
+      payload,
+      request
+    );
+  }
+
+  async syncReport(request: any) {
+    if (!this.utilityService) await this.init(request);
+
+    const payload = this.utilityService!.buildPayloadFromSchema(
+      request?.data,
+      request?.schemaData ?? [],
+      this.buildSyncReportPayload()
+    );
+
+    return this.request("/reports/sync_report", payload, request);
+  }
+
+  async createField(request: any) {
+    if (!this.utilityService) await this.init(request);
+
+    const payload = this.utilityService!.buildPayloadFromSchema(
+      request?.data,
+      request?.schemaData ?? [],
+      this.buildCreateFieldPayload()
+    );
+
+    return this.request("/fields/create", payload, request);
+  }
+
+  buildCreateContactPayload() {
+    return {
+      first_name: null,
+      last_name: null,
+      email: null,
+      organization_name: null,
+    };
+  }
+
+  buildUpdateContactPayload() {
+    return {
+      id: null,
+      first_name: null,
+      last_name: null,
+      email: null,
+    };
+  }
+
+  buildBulkContactsPayload() {
+    return {
+      contacts:null,
+    };
+  }
+
+  buildSearchAccountsPayload() {
+    return {
+      filters: null,
+      page: 1,
+      per_page: 25,
+    };
+  }
+
+  buildBulkAccountsPayload() {
+    return {
+      accounts: null,
+    };
+  }
+
+  buildMatchPersonPayload() {
+    return {
+      email: null,
+      first_name: null,
+      last_name: null,
+      organization_name: null,
+    };
+  }
+
+  buildBulkMatchPeoplePayload() {
+    return {
+      people: null,
+    };
+  }
+
+  buildShowPersonPayload() {
+    return {
+      person_id: null,
+    };
+  }
+
+  buildShowOrganizationPayload() {
+    return {
+      organization_id: null,
+    };
+  }
+
+  buildBulkEnrichOrganizationsPayload() {
+    return {
+      organizations: null,
+    };
+  }
+
+  buildOrganizationJobPostingsPayload() {
+    return {
+      organization_id: null,
+    };
+  }
+
+  buildMixedSearchPayload() {
+    return {
+      filters: null,
+      page: 1,
+      per_page: 25,
+    };
+  }
+
+  buildSyncReportPayload() {
+    return {
+      report_id: null,
+    };
+  }
+
+  buildCreateFieldPayload() {
+    return {
+      name: null,
+      field_type: null,
+    };
+  }
+
+
   /* =======================
      Blueprint
   ======================= */
@@ -232,6 +566,41 @@ export default class ApolloClient extends AbstractApolloClient {
         action: "addToSequence",
         description: "Add a contact to a sequence for outreach",
         defaultPayload: this.buildAddToSequencePayload(),
+      },
+      {
+        action: "createContact",
+        description: "Create a new contact in Apollo",
+        defaultPayload: this.buildCreateContactPayload(),
+      },
+      {
+        action: "bulkCreateContacts",
+        description: "Bulk create contacts",
+        defaultPayload: this.buildBulkContactsPayload(),
+      },
+      {
+        action: "searchAccounts",
+        description: "Search accounts in Apollo",
+        defaultPayload: this.buildSearchAccountsPayload(),
+      },
+      {
+        action: "matchPerson",
+        description: "Match a person via email/domain",
+        defaultPayload: this.buildMatchPersonPayload(),
+      },
+      {
+        action: "mixedPeopleSearch",
+        description: "Search people across datasets",
+        defaultPayload: this.buildMixedSearchPayload(),
+      },
+      {
+        action: "syncReport",
+        description: "Sync Apollo report",
+        defaultPayload: this.buildSyncReportPayload(),
+      },
+      {
+        action: "createField",
+        description: "Create custom field in Apollo",
+        defaultPayload: this.buildCreateFieldPayload(),
       },
     ];
   }
