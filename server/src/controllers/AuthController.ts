@@ -30,8 +30,10 @@ class AuthController {
         if (integration === "gmail") {
             return this.authService.gmailConsent(res, encodedState);
         }
-        if( integration === "sheet"){
+        else if( integration === "sheet"){
 
+        } else if( integration === "facebook") {
+            return this.authService.facebookConsent(res, encodedState);
         }
 
         throw new Error("Integration not supported");

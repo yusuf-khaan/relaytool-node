@@ -2,7 +2,7 @@
 export interface ProviderMetadata {
   name: string;
   description: string;
-  authType?: string;
+  authType?: string | null;
   actions: string[];
 }
 

@@ -1,4 +1,5 @@
 import { NodeVM } from "vm2";
+import axios from "axios";
 import AbstractSandboxClient from "./abstractSandbox.js";
 
 export interface SandboxResult {
@@ -9,7 +10,28 @@ export interface SandboxResult {
   executionTime?: number;
 }
 
+type AllowedHttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+
+interface ThirdPartyRequest {
+  url: string;
+  method?: AllowedHttpMethod;
+  headers?: Record<string, string>;
+  params?: Record<string, any>;
+  data?: any;
+  timeoutMs?: number;
+}
+
 class SandboxClient extends AbstractSandboxClient {
+  private readonly defaultHttpTimeoutMs = 10000;
+  private readonly maxHttpTimeoutMs = 30000;
+  private readonly allowedHttpMethods = new Set<AllowedHttpMethod>([
+    "GET",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+  ]);
+
   constructor() {
     super();
   }
@@ -42,7 +64,8 @@ class SandboxClient extends AbstractSandboxClient {
         require: false,
         sandbox: {
           __jsonPayload: inputData,
-          getJsonPayloadRecieved: () => inputData
+          getJsonPayloadRecieved: () => inputData,
+          __callThirdParty: (payload: ThirdPartyRequest) => this.callThirdParty(payload),
         }
       });
 
@@ -120,12 +143,13 @@ class SandboxClient extends AbstractSandboxClient {
     return `
 module.exports = async () => {
   globalThis.getJsonPayloadRecieved = () => __jsonPayload;
+  globalThis.callThirdParty = (payload) => __callThirdParty(payload);
 
   let __result;
 
   try {
-    // Always treat input as full JS code (statements allowed)
-    __result = (function() {
+    // Run user code in async scope so top-level await inside customLogic works.
+    __result = await (async function() {
       ${clean}
     })();
   } catch (err) {
@@ -135,6 +159,123 @@ module.exports = async () => {
   return __result;
 };
 `;
+  }
+
+  private async callThirdParty(payload: ThirdPartyRequest): Promise<any> {
+    if (!payload || typeof payload !== "object") {
+      throw new Error("callThirdParty payload must be an object");
+    }
+
+    if (!payload.url || typeof payload.url !== "string") {
+      throw new Error("callThirdParty requires a valid 'url' string");
+    }
+
+    const targetUrl = new URL(payload.url);
+    if (targetUrl.protocol !== "https:" && targetUrl.protocol !== "http:") {
+      throw new Error("Only http/https URLs are allowed");
+    }
+
+    this.validateHost(targetUrl.hostname);
+
+    const method = (payload.method || "GET").toUpperCase() as AllowedHttpMethod;
+    if (!this.allowedHttpMethods.has(method)) {
+      throw new Error(`HTTP method '${method}' is not allowed`);
+    }
+
+    const timeoutMs = Math.min(
+      Math.max(1000, payload.timeoutMs || this.defaultHttpTimeoutMs),
+      this.maxHttpTimeoutMs
+    );
+
+    const response = await axios.request({
+      url: targetUrl.toString(),
+      method,
+      headers: this.sanitizeHeaders(payload.headers),
+      params: payload.params,
+      data: payload.data,
+      timeout: timeoutMs,
+      maxRedirects: 0,
+      validateStatus: () => true,
+    });
+
+    return {
+      status: response.status,
+      headers: response.headers,
+      data: response.data,
+    };
+  }
+
+  private validateHost(hostname: string): void {
+    const allowList = this.getAllowedHostPatterns();
+
+    if (allowList.length === 0) {
+      throw new Error(
+        "No third-party hosts are configured. Set SANDBOX_ALLOWED_HTTP_HOSTS with a comma-separated allowlist."
+      );
+    }
+
+    const normalized = hostname.toLowerCase();
+
+    const matched = allowList.some((pattern) => {
+      if (pattern.startsWith("*.")) {
+        const suffix = pattern.slice(1).toLowerCase();
+        return normalized.endsWith(suffix);
+      }
+      return normalized === pattern.toLowerCase();
+    });
+
+    if (!matched) {
+      throw new Error(`Host '${hostname}' is not allowed`);
+    }
+
+    if (this.isPrivateNetworkHostname(normalized)) {
+      throw new Error(`Host '${hostname}' resolves to a private or loopback network range`);
+    }
+  }
+
+  private getAllowedHostPatterns(): string[] {
+    const raw = process.env.SANDBOX_ALLOWED_HTTP_HOSTS || "";
+    return raw
+      .split(",")
+      .map((x) => x.trim())
+      .filter((x) => x.length > 0);
+  }
+
+  private sanitizeHeaders(headers?: Record<string, string>): Record<string, string> {
+    if (!headers) return {};
+
+    const blocked = new Set(["host", "connection", "content-length", "transfer-encoding"]);
+    const sanitized: Record<string, string> = {};
+
+    for (const [key, value] of Object.entries(headers)) {
+      const lower = key.toLowerCase();
+      if (blocked.has(lower)) continue;
+      sanitized[key] = String(value);
+    }
+
+    return sanitized;
+  }
+
+  private isPrivateNetworkHostname(hostname: string): boolean {
+    if (hostname === "localhost" || hostname === "::1") {
+      return true;
+    }
+
+    if (hostname.startsWith("127.")) return true;
+    if (hostname.startsWith("10.")) return true;
+    if (hostname.startsWith("192.168.")) return true;
+    if (hostname.startsWith("169.254.")) return true;
+    if (hostname.startsWith("fc") || hostname.startsWith("fd")) return true;
+
+    if (hostname.startsWith("172.")) {
+      const parts = hostname.split(".");
+      const secondOctet = Number(parts[1]);
+      if (!Number.isNaN(secondOctet) && secondOctet >= 16 && secondOctet <= 31) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
 
@@ -236,7 +377,7 @@ module.exports = async () => {
     return [
       {
         action: "code",
-        description: "A javascript compiler",
+        description: "A javascript compiler with safe third-party HTTP helper via callThirdParty(...)",
         defaultPayload: {
           "code": null
         },
