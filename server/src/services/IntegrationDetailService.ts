@@ -69,7 +69,11 @@ class IntegrationDetailService {
         let payload = null;
         if (slug === "gmail") {
             return data;
-        } else {
+        } else if (slug === "facebook") {
+            payload = {
+                access_token: data?.access_token,
+                expires_in: data?.expires_in,
+            };
         }
         return payload;
     }

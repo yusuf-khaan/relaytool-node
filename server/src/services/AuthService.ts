@@ -135,10 +135,10 @@ class AuthService {
 
         const scope = [
             "pages_show_list",
+            "instagram_basic",
             "pages_read_engagement",
-            "instagram_business_basic",
+            "pages_manage_metadata",
             "instagram_manage_comments",
-            "instagram_business_manage_messages",
         ].join(",");
 
         const url =

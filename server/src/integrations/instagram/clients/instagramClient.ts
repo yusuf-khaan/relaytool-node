@@ -1,38 +1,24 @@
 // src/integrations/instagram/InstagramClient.ts
 
-import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
 import AbstractInstagramClient from "./abstractInstagram.js";
 import Utility from "../../../services/Utility.js";
-import auth from "../../../config/auth.js";
 import IntegrationDetailService from "../../../services/IntegrationDetailService.js";
-
-/* =======================
-   Types
-======================= */
-
-export interface InstagramToken {
-  access_token: string;
-  expires_in?: number;
-  obtained_at?: number;
-}
 
 /* =======================
    Client
 ======================= */
 
 export default class InstagramClient extends AbstractInstagramClient {
+  private baseUrl = "https://graph.instagram.com";
+  private facebookUrl = "https://graph.facebook.com/v17.0";
+  private timeoutMs = 15_000;
   private accessToken!: string;
-  private client!: AxiosInstance;
   private utilityService!: Utility;
   private integrationService = new IntegrationDetailService();
+  private pageId: string = "";
+  private pageAccessToken: string = "";
 
-  constructor() {
-    super();
-    this.client = axios.create({
-      baseURL: "https://graph.instagram.com",
-      timeout: 15_000,
-    });
-  }
+  constructor() { super(); }
 
   /* =======================
      Init
@@ -45,6 +31,7 @@ export default class InstagramClient extends AbstractInstagramClient {
     if (!userId) throw new Error("userId is required for Instagram init");
 
     const token = await this.fetchTokenFromDB(userId);
+    console.log("Fetched token from DB:", token);
     if (!token?.access_token) {
       throw new Error("No Instagram access token found in DB");
     }
@@ -58,7 +45,7 @@ export default class InstagramClient extends AbstractInstagramClient {
     const integration =
       await this.integrationService.getIntegrationCredential({
         userId,
-        slug: "instagram",
+        slug: "facebook",
       });
 
     if (!integration?.auth_detail?.access_token) return null;
@@ -70,31 +57,37 @@ export default class InstagramClient extends AbstractInstagramClient {
      Request Helper
   ======================= */
 
-  private async sendRequest<T = any>(
-    config: AxiosRequestConfig
-  ): Promise<T> {
-    config.headers = {
-      ...(config.headers || {}),
-      Authorization: `Bearer ${this.accessToken}`,
-    };
+  private async sendRequest<T = any>(config: any): Promise<T> {
+    if (config.from === "facebook") {
+      this.baseUrl = this.facebookUrl;
+    }
 
-    config.params = {
-      ...(config.params || {}),
-      access_token: this.accessToken,
-    };
+    const params = { ...(config.params ?? {}) };
+    const query = new URLSearchParams(
+      Object.entries(params)
+        .filter(([_, v]) => v != null)
+        .map(([k, v]) => [k, String(v)])
+    ).toString();
+
+    const url = `${this.baseUrl.replace(/\/$/, "")}/${config.url.replace(/^\//, "")}?${query}`;
 
     try {
-      const res = await this.client.request<T>(config);
-      return res.data;
+      const res = await fetch(url, { method: config.method || "GET" });
+      const contentType = res.headers.get("content-type") ?? "";
+      const responseData = contentType.includes("application/json") ? await res.json() : await res.text();
+
+      if (!res.ok) {
+        const message =
+          responseData?.error?.message || responseData?.error || responseData || `${res.status} ${res.statusText}`;
+        throw new Error(String(message));
+      }
+
+      return responseData as T;
     } catch (err: any) {
-      const message =
-        err?.response?.data?.error?.message ||
-        err?.response?.data ||
-        err.message ||
-        err;
-      throw new Error(String(message));
+      throw new Error(err?.message || err);
     }
   }
+
 
   private async ensureInit(request?: any) {
     if (!this.accessToken) {
@@ -112,7 +105,54 @@ export default class InstagramClient extends AbstractInstagramClient {
     return this.sendRequest({
       method: "GET",
       url: "/me",
-      params: { fields: "id,username,account_type" },
+      params: { fields: "id,username" },
+    });
+  }
+
+  async getFacebookProfile(request: any): Promise<any> {
+    await this.ensureInit(request);
+
+    let res = await this.sendRequest({
+      method: "GET",
+      url: "/me/accounts",
+      params: { access_token: this.accessToken },
+      from: "facebook",
+    });
+
+    this.pageAccessToken = res.data[0].access_token;
+    this.pageId = res.data[0].id;
+
+    const instagramBusinessAccount = await this.sendRequest({
+      method: "GET",
+      url: `/${this.pageId}`,
+      params: {
+        fields: `
+      id,
+      name,
+      category,
+      category_list,
+      fan_count,
+      link,
+      picture,
+      instagram_business_account
+    `,
+        access_token: this.pageAccessToken,
+      },
+      from: "facebook",
+    });
+    console.log("Instagram Business Account response:", instagramBusinessAccount);
+    return instagramBusinessAccount;
+    // let instagramBusinessAccountId = instagramBusinessAccount?.id;
+  }
+  
+  async getInstagramAccountMedia(request: any): Promise<any> {
+    await this.ensureInit(request);
+
+    return this.sendRequest({
+      method: "GET",
+      url: `/${this.pageId}`,
+      params: { fields: "id,caption,media_type,media_url,timestamp", access_token: this.accessToken },
+      from: "facebook",
     });
   }
 
@@ -294,6 +334,12 @@ export default class InstagramClient extends AbstractInstagramClient {
     return { mediaIds: null as string[] | null, caption: null };
   }
 
+  private buildFacebookProfilePayload() {
+    return {
+      access_token: null,
+    };
+  }
+
   /* =======================
      Automation Metadata
   ======================= */
@@ -339,6 +385,11 @@ export default class InstagramClient extends AbstractInstagramClient {
         action: "createCarouselContainer",
         description: "Create carousel container",
         defaultPayload: this.buildCarouselPayload(),
+      },
+      {
+        action: "getFacebookProfile",
+        description: "Get Facebook profile",
+        defaultPayload: this.buildFacebookProfilePayload(),
       },
     ];
   }
