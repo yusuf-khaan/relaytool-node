@@ -118,6 +118,8 @@ export default class InstagramClient extends AbstractInstagramClient {
       params: { access_token: this.accessToken },
       from: "facebook",
     });
+    console.log(this.accessToken, "132");
+    console.log("Facebook Accounts response:", res);
 
     this.pageAccessToken = res.data[0].access_token;
     this.pageId = res.data[0].id;
@@ -141,17 +143,30 @@ export default class InstagramClient extends AbstractInstagramClient {
       from: "facebook",
     });
     console.log("Instagram Business Account response:", instagramBusinessAccount);
-    return instagramBusinessAccount;
-    // let instagramBusinessAccountId = instagramBusinessAccount?.id;
+    let instagramBusinessAccountId = instagramBusinessAccount?.id;
+    await this.storeInstagramCredentials(request);
+    return this.getInstagramAccountMedia(request);
   }
-  
+
+  async storeInstagramCredentials(request: any): Promise<any> {
+    return this.integrationService.storeIntegrationCredential({
+      "credential": {
+        "access_token": this.accessToken,
+        "instagram_access_token": this.pageAccessToken,
+        "instagram_page_id": this.pageId
+      },
+      "slug": "instagram",
+      "userId": request?.data?.userId
+    });
+  }
+
   async getInstagramAccountMedia(request: any): Promise<any> {
     await this.ensureInit(request);
 
     return this.sendRequest({
       method: "GET",
       url: `/${this.pageId}`,
-      params: { fields: "id,caption,media_type,media_url,timestamp", access_token: this.accessToken },
+      params: { fields: "id,name,username", access_token: this.pageAccessToken },
       from: "facebook",
     });
   }

@@ -134,11 +134,31 @@ class AuthService {
         }
 
         const scope = [
+            // ===== FACEBOOK PAGE =====
             "pages_show_list",
-            "instagram_basic",
             "pages_read_engagement",
             "pages_manage_metadata",
+            // "pages_manage_posts",
+            // "pages_manage_engagement",
+            // "pages_read_user_content",
+
+            // ===== INSTAGRAM BASIC =====
+            "instagram_basic",
             "instagram_manage_comments",
+            // "instagram_manage_insights",
+            "instagram_content_publish",
+
+            // ===== MESSAGING (if needed) =====
+            "pages_messaging",
+            // "pages_messaging_subscriptions",
+
+            // ===== BUSINESS MANAGEMENT =====
+            "business_management",
+
+            // ===== OPTIONAL (if running ads later) =====
+            "ads_read",
+            "ads_management",
+
         ].join(",");
 
         const url =
