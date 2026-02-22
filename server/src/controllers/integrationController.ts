@@ -38,7 +38,7 @@ class IntegrationController {
     }
     const providers = Array.isArray(providerInput) ? providerInput : [providerInput];
     const allowedProviders: ProviderName[] = [
-      "gmail", "gemini", "x", "discord", "instagram", "jira", "openai", "postgres", "sandbox", "telegram", "twilio", "apollo"
+      "gmail", "gemini", "x", "discord", "instagram", "jira", "openai", "postgres", "sandbox", "teams", "telegram", "twilio", "apollo"
     ];
     const validProviders = providers.filter((p): p is ProviderName => allowedProviders.includes(p as ProviderName));
     if (validProviders.length === 0) {
