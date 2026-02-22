@@ -1,5 +1,6 @@
 import ApolloProvider from "../integrations/apollo/providers/apolloProvider.js";
 import DiscordProvider from "../integrations/discord/providers/discordProvider.js";
+import GeminiProvider from "../integrations/gemini/providers/geminiProvider.js";
 import GmailProvider from "../integrations/gmail/providers/gmailProvider.js";
 import InstagramProvider from "../integrations/instagram/providers/instagramProvider.js";
 import JiraProvider from "../integrations/jira/providers/jiraProvider.js";
@@ -12,6 +13,7 @@ import XProvider from "../integrations/x/providers/xProvider.js";
 
 export const ProviderRepository = {
   gmail: GmailProvider,
+  gemini: GeminiProvider,
   x: XProvider,
   discord: DiscordProvider,
   instagram: InstagramProvider,

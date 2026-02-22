@@ -125,6 +125,7 @@ export default class TelegramClient extends AbstractTelegramClient {
   }
 
   async sendMessage(request: any): Promise<any> {
+    await this.ensureInitWithDefaults(request);
     const schema = request?.schemaData ?? [];
     const payload = this.utilityService.buildPayloadFromSchema(
       request?.data,
@@ -145,6 +146,7 @@ export default class TelegramClient extends AbstractTelegramClient {
   }
 
   async getUpdates(request: any): Promise<any> {
+    await this.ensureInitWithDefaults(request);
     const schema = request?.schemaData ?? [];
     const payload = this.utilityService.buildPayloadFromSchema(
       request?.data,
@@ -158,6 +160,7 @@ export default class TelegramClient extends AbstractTelegramClient {
   }
 
   async getMe(request: any): Promise<any> {
+    await this.ensureInitWithDefaults(request);
     return this.sendRequest("getMe", {}, request);
   }
 
@@ -168,6 +171,7 @@ export default class TelegramClient extends AbstractTelegramClient {
   }
 
   async getChat(request: any): Promise<any> {
+    await this.ensureInitWithDefaults(request);
     const schema = request?.schemaData ?? [];
     const payload = this.utilityService.buildPayloadFromSchema(
       request?.data,
@@ -188,6 +192,7 @@ export default class TelegramClient extends AbstractTelegramClient {
   }
 
   async sendPhoto(request: any): Promise<any> {
+    await this.ensureInitWithDefaults(request);
     const schema = request?.schemaData ?? [];
     const payload = this.utilityService.buildPayloadFromSchema(
       request?.data,
@@ -209,6 +214,7 @@ export default class TelegramClient extends AbstractTelegramClient {
   }
 
   async sendDocument(request: any): Promise<any> {
+    await this.ensureInitWithDefaults(request);
     const schema = request?.schemaData ?? [];
     const payload = this.utilityService.buildPayloadFromSchema(
       request?.data,
