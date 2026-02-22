@@ -40,7 +40,7 @@ DB_NAME=relayhooks
 DB_USER=postgres
 DB_PASS=your_password
 
-SANDBOX_ALLOWED_HTTP_HOSTS=relay-hooks-node,relay-hooks-java,localhost,127.0.0.1,relayhook.in,api.relayhook.in
+SANDBOX_ALLOWED_HTTP_HOSTS=localhost,127.0.0.1
 ```
 
 Notes:
