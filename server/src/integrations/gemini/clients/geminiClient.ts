@@ -182,6 +182,8 @@ class GeminiClient extends AbstractGemini {
       schemaData,
       this.buildTextModelPayload(),
     );
+    console.log("Model request payload:\n", JSON.stringify(payload, null, 2));
+    console.log("requestdata and schema data:\n", JSON.stringify({ requestData: request?.data, schemaData }, null, 2));
 
     return this.sendGenerateContentRequest(
       payload.model || process.env.GEMINI_MODEL || "gemini-2.5-flash",
