@@ -1,6 +1,7 @@
 import AbstractTelegramClient from "./abstractTelegram.js";
 import Utility from "../../../services/Utility.js";
 import IntegrationDetailService from "../../../services/IntegrationDetailService.js";
+import { Agent, fetch as undiciFetch } from "undici";
 
 interface TelegramCredentials {
   botToken: string;
@@ -12,6 +13,7 @@ export default class TelegramClient extends AbstractTelegramClient {
   private integrationDetailService = new IntegrationDetailService();
   private botToken?: string;
   private readonly baseUrl = "https://api.telegram.org";
+  private readonly telegramAgent = new Agent({ connect: { family: 4 } as any });
 
   constructor() {
     super();
@@ -77,16 +79,20 @@ export default class TelegramClient extends AbstractTelegramClient {
     }
     console.log(`Sending request to Telegram API method ${method} with params:`, Object.fromEntries(body.entries()));
     console.log(`Request URL: ${this.getMethodUrl(method)}`);
-    const res = await fetch(this.getMethodUrl(method), {
+    const res = await undiciFetch(this.getMethodUrl(method), {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body,
+      dispatcher: this.telegramAgent,
     });
 
     const contentType = res.headers.get("content-type") || "";
-    const responseData = contentType.includes("application/json")
-      ? await res.json()
-      : await res.text();
+    let responseData: any;
+    if (contentType.includes("application/json")) {
+      responseData = await res.json();
+    } else {
+      responseData = await res.text();
+    }
 
     if (!res.ok) {
       throw new Error(typeof responseData === "string" ? responseData : `${res.status} ${res.statusText}`);
@@ -244,4 +250,6 @@ export default class TelegramClient extends AbstractTelegramClient {
     ];
   }
 }
+
+
 
