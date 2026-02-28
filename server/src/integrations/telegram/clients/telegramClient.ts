@@ -1,7 +1,6 @@
 import AbstractTelegramClient from "./abstractTelegram.js";
 import Utility from "../../../services/Utility.js";
 import IntegrationDetailService from "../../../services/IntegrationDetailService.js";
-import { stringify } from "querystring";
 
 interface TelegramCredentials {
   botToken: string;
@@ -12,7 +11,6 @@ export default class TelegramClient extends AbstractTelegramClient {
   private utilityService!: Utility;
   private integrationDetailService = new IntegrationDetailService();
   private botToken?: string;
-  private defaultChatId: string | number | undefined;
   private readonly baseUrl = "https://api.telegram.org";
 
   constructor() {
@@ -31,7 +29,6 @@ export default class TelegramClient extends AbstractTelegramClient {
 
     const credentials = await this.getIntegrationDetails(userId);
     this.botToken = credentials.botToken;
-    this.defaultChatId = credentials.defaultChatId;
   }
 
   private async ensureInitWithDefaults(request: any) {
@@ -51,16 +48,14 @@ export default class TelegramClient extends AbstractTelegramClient {
     }
 
     const auth = credential.auth_detail;
-    const botToken = auth.botToken || auth.bot_token || auth.token;
-    const defaultChatId = auth.defaultChatId || auth.default_chat_id || auth.chatId || auth.chat_id;
+    const botToken = auth.bot_token;
 
     if (!botToken) {
       throw new Error("Telegram bot token missing in auth_detail");
     }
 
     return {
-      botToken: String(botToken),
-      ...(defaultChatId !== undefined ? { defaultChatId } : {}),
+      botToken: botToken,
     };
   }
 
@@ -80,7 +75,7 @@ export default class TelegramClient extends AbstractTelegramClient {
         body.append(key, String(value));
       }
     }
-    console.log(`Sending request to Telegram API method ${method} with params:`, JSON.parse(body.toString()));
+    console.log(`Sending request to Telegram API method ${method} with params:`, Object.fromEntries(body.entries()));
     console.log(`Request URL: ${this.getMethodUrl(method)}`);
     const res = await fetch(this.getMethodUrl(method), {
       method: "POST",
@@ -104,17 +99,6 @@ export default class TelegramClient extends AbstractTelegramClient {
     return typeof responseData === "object" && responseData ? responseData.result : responseData;
   }
 
-  private withDefaultChatId(payload: Record<string, any>) {
-    const withChat = { ...payload };
-    if (!withChat.chat_id && this.defaultChatId) {
-      withChat.chat_id = this.defaultChatId;
-    }
-    if (!withChat.chat_id) {
-      throw new Error("chat_id is required");
-    }
-    return withChat;
-  }
-
   buildSendMessagePayload() {
     return {
       chat_id: null,
@@ -135,8 +119,7 @@ export default class TelegramClient extends AbstractTelegramClient {
       schema,
       this.buildSendMessagePayload()
     );
-    const finalPayload = this.withDefaultChatId(payload);
-    return this.sendRequest("sendMessage", finalPayload, request);
+    return this.sendRequest("sendMessage", payload, request);
   }
 
   buildGetUpdatesPayload() {
@@ -181,7 +164,7 @@ export default class TelegramClient extends AbstractTelegramClient {
       schema,
       this.buildGetChatPayload()
     );
-    return this.sendRequest("getChat", this.withDefaultChatId(payload), request);
+    return this.sendRequest("getChat", payload, request);
   }
 
   buildSendPhotoPayload() {
@@ -202,8 +185,7 @@ export default class TelegramClient extends AbstractTelegramClient {
       schema,
       this.buildSendPhotoPayload()
     );
-    const finalPayload = this.withDefaultChatId(payload);
-    return this.sendRequest("sendPhoto", finalPayload, request);
+    return this.sendRequest("sendPhoto", payload, request);
   }
 
   buildSendDocumentPayload() {
@@ -224,8 +206,7 @@ export default class TelegramClient extends AbstractTelegramClient {
       schema,
       this.buildSendDocumentPayload()
     );
-    const finalPayload = this.withDefaultChatId(payload);
-    return this.sendRequest("sendDocument", finalPayload, request);
+    return this.sendRequest("sendDocument", payload, request);
   }
 
   pairingFunctionNameAndPayload() {
@@ -263,3 +244,4 @@ export default class TelegramClient extends AbstractTelegramClient {
     ];
   }
 }
+
