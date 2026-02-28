@@ -1,4 +1,3 @@
-import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
 dotenv.config();
@@ -30,7 +29,16 @@ const auth = {
     },
     sheets: {
         driver: 'sheets',
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: process.env.GOOGLE_REDIRECT_URI,
         service_account_key: path.join(process.cwd(), 'server/config/google-service-account.json')
+    },
+    drive: {
+        driver: 'drive',
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: process.env.GOOGLE_REDIRECT_URI
     }
 }
 
