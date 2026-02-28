@@ -1,6 +1,7 @@
 import AbstractTelegramClient from "./abstractTelegram.js";
 import Utility from "../../../services/Utility.js";
 import IntegrationDetailService from "../../../services/IntegrationDetailService.js";
+import { stringify } from "querystring";
 
 interface TelegramCredentials {
   botToken: string;
@@ -127,11 +128,13 @@ export default class TelegramClient extends AbstractTelegramClient {
   async sendMessage(request: any): Promise<any> {
     await this.ensureInitWithDefaults(request);
     const schema = request?.schemaData ?? [];
+    console.log("Building sendMessage payload with schema:", schema);
     const payload = this.utilityService.buildPayloadFromSchema(
       request?.data,
       schema,
       this.buildSendMessagePayload()
     );
+    console.log("Built sendMessage payload:", stringify(payload));
     const finalPayload = this.withDefaultChatId(payload);
     return this.sendRequest("sendMessage", finalPayload, request);
   }
