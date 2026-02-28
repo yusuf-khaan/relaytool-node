@@ -80,7 +80,8 @@ export default class TelegramClient extends AbstractTelegramClient {
         body.append(key, String(value));
       }
     }
-
+    console.log(`Sending request to Telegram API method ${method} with params:`, JSON.parse(body.toString()));
+    console.log(`Request URL: ${this.getMethodUrl(method)}`);
     const res = await fetch(this.getMethodUrl(method), {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -134,7 +135,6 @@ export default class TelegramClient extends AbstractTelegramClient {
       schema,
       this.buildSendMessagePayload()
     );
-    console.log("Built sendMessage payload:", stringify(payload));
     const finalPayload = this.withDefaultChatId(payload);
     return this.sendRequest("sendMessage", finalPayload, request);
   }
