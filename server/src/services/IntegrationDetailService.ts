@@ -34,7 +34,7 @@ class IntegrationDetailService {
                     .first();
             }
         }
-        console.log("these are cred",credential);
+        console.log("these are cred", credential);
         return credential;
     }
 
@@ -67,7 +67,7 @@ class IntegrationDetailService {
 
     async createSpecificJsonCredentialPayloadForIntegration(data: any, slug: any) {
         let payload = null;
-        if (slug === "gmail") {
+        if (slug === "gmail" || slug === "sheets" || slug === "sheet" || slug === "drive") {
             return data;
         } else if (slug === "facebook") {
             payload = {
@@ -78,6 +78,32 @@ class IntegrationDetailService {
         return payload;
     }
 
+    async getExecutionNodeData(requestContext: any, workflowNodeId: any, wantInput = true) { // wantInput=false means output_data
+        const workflowExecutionId = requestContext?.__requestContext?.workflowExecutionId;
+        const workflowId = requestContext?.__requestContext?.workflowId;
+        if (!workflowExecutionId) {
+            // return [];
+            throw new Error("workflowExecutionId is required to fetch node execution data");
+        }
+        if (workflowNodeId === undefined || workflowNodeId === null) {
+            // return [];
+            throw new Error("workflowNodeId is required");
+        }
+
+        const workflowNode = await db("workflow_nodes").where({ node_id: workflowNodeId, workflow_id: workflowId }).first(); // to check if node exist in that workflow or not
+        if (!workflowNode) {
+            // return [];
+            throw new Error("Node not found in the specified workflow");
+        }
+
+        const row = await db("workflow_node_execution")
+            .where({ workflow_execution_id: workflowExecutionId, workflow_node_id: workflowNode?.id })
+            .select(wantInput ? "input_data" : "output_data")
+            .first();
+
+        if (!row) return null;
+        return wantInput ? row.input_data ?? null : row.output_data ?? null;
+    }
 }
 
 export default IntegrationDetailService;

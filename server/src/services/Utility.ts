@@ -1,4 +1,7 @@
+import SandboxProvider from "../integrations/sandbox/providers/sandboxProvider.js";
+
 class Utility {
+    private sandboxClient = SandboxProvider.getClient();
 
 
     constructor() {
@@ -113,7 +116,7 @@ class Utility {
         for (const schemaItem of schemaData) {
             let value;
             if (schemaItem.customLogic !== undefined && schemaItem.customLogic !== null) {
-                value = schemaItem.customLogic;
+                value = this.resolveCustomLogicValue(schemaItem.customLogic, inputData);
             }
             else if (schemaItem.inputKey) {
                 value = this.getValueByPath(inputData, schemaItem.inputKey);
@@ -125,6 +128,9 @@ class Utility {
         return output;
     }
 
+    private resolveCustomLogicValue(customLogic: any, inputData: any) {
+        return this.sandboxClient.resolveSchemaCustomLogic(customLogic, inputData);
+    }
 }
 
 export default Utility;

@@ -46,7 +46,41 @@ class AuthService {
                 userId: userId
             }
             console.log("payload ", payload);
-            this.integrationDetailService.storeIntegrationCredential(payload);
+            await this.integrationDetailService.storeIntegrationCredential(payload);
+        } else if (integrationSlug === "sheet" || integrationSlug === "sheets") {
+            const GOOGLE_CLIENT_ID = auth.sheets.client_id;
+            const GOOGLE_CLIENT_SECRET = auth.sheets.client_secret;
+            const REDIRECT_URI = auth.sheets.redirect_uri;
+            const googleOauthClient = new google.auth.OAuth2(
+                GOOGLE_CLIENT_ID,
+                GOOGLE_CLIENT_SECRET,
+                REDIRECT_URI
+            );
+            const { tokens } = await googleOauthClient.getToken(code);
+            const payload = {
+                slug: "sheets",
+                credential: tokens,
+                userId: userId
+            };
+            console.log("Sheets payload ", payload);
+            await this.integrationDetailService.storeIntegrationCredential(payload);
+        } else if (integrationSlug === "drive") {
+            const GOOGLE_CLIENT_ID = auth.drive.client_id;
+            const GOOGLE_CLIENT_SECRET = auth.drive.client_secret;
+            const REDIRECT_URI = auth.drive.redirect_uri;
+            const googleOauthClient = new google.auth.OAuth2(
+                GOOGLE_CLIENT_ID,
+                GOOGLE_CLIENT_SECRET,
+                REDIRECT_URI
+            );
+            const { tokens } = await googleOauthClient.getToken(code);
+            const payload = {
+                slug: "drive",
+                credential: tokens,
+                userId: userId
+            };
+            console.log("Drive payload ", payload);
+            await this.integrationDetailService.storeIntegrationCredential(payload);
         } else if (integrationSlug === "facebook") {
             const FB_CLIENT_ID = auth.facebook.client_id;
             const FB_CLIENT_SECRET = auth.facebook.client_secret;
@@ -115,6 +149,56 @@ class AuthService {
             scope: [
                 'https://www.googleapis.com/auth/gmail.readonly',
                 'https://www.googleapis.com/auth/gmail.send'
+            ],
+            redirect_uri: REDIRECT_URI,
+            state
+        });
+        return res.redirect(url);
+    }
+
+    sheetConsent(res: any, state: any) {
+        const GOOGLE_CLIENT_ID = auth.sheets.client_id;
+        const GOOGLE_CLIENT_SECRET = auth.sheets.client_secret;
+        const REDIRECT_URI = auth.sheets.redirect_uri;
+        if (!REDIRECT_URI) {
+            throw new Error("GOOGLE redirect URI is not configured");
+        }
+        const client = new google.auth.OAuth2(
+            GOOGLE_CLIENT_ID,
+            GOOGLE_CLIENT_SECRET,
+            REDIRECT_URI
+        );
+        const url = client.generateAuthUrl({
+            access_type: 'offline',
+            prompt: 'consent',
+            scope: [
+                'https://www.googleapis.com/auth/spreadsheets',
+                'https://www.googleapis.com/auth/drive.file'
+            ],
+            redirect_uri: REDIRECT_URI,
+            state
+        });
+        return res.redirect(url);
+    }
+
+    driveConsent(res: any, state: any) {
+        const GOOGLE_CLIENT_ID = auth.drive.client_id;
+        const GOOGLE_CLIENT_SECRET = auth.drive.client_secret;
+        const REDIRECT_URI = auth.drive.redirect_uri;
+        if (!REDIRECT_URI) {
+            throw new Error("GOOGLE redirect URI is not configured");
+        }
+        const client = new google.auth.OAuth2(
+            GOOGLE_CLIENT_ID,
+            GOOGLE_CLIENT_SECRET,
+            REDIRECT_URI
+        );
+        const url = client.generateAuthUrl({
+            access_type: 'offline',
+            prompt: 'consent',
+            scope: [
+                'https://www.googleapis.com/auth/drive.file',
+                'https://www.googleapis.com/auth/drive.readonly'
             ],
             redirect_uri: REDIRECT_URI,
             state

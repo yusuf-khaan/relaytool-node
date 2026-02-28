@@ -1,5 +1,6 @@
 import ApolloProvider from "../integrations/apollo/providers/apolloProvider.js";
 import DiscordProvider from "../integrations/discord/providers/discordProvider.js";
+import DriveProvider from "../integrations/drive/providers/driveProvider.js";
 import GeminiProvider from "../integrations/gemini/providers/geminiProvider.js";
 import GmailProvider from "../integrations/gmail/providers/gmailProvider.js";
 import InstagramProvider from "../integrations/instagram/providers/instagramProvider.js";
@@ -7,6 +8,8 @@ import JiraProvider from "../integrations/jira/providers/jiraProvider.js";
 import OpenaiProvider from "../integrations/openai/providers/openaiProvider.js";
 import PostgresProvider from "../integrations/postgres/providers/postgresProvider.js";
 import SandboxProvider from "../integrations/sandbox/providers/sandboxProvider.js";
+import SheetsProvider from "../integrations/sheets/providers/sheetsProvider.js";
+import TeamsProvider from "../integrations/teams/providers/teamsProvider.js";
 import TelegramProvider from "../integrations/telegram/providers/telegramProvider.js";
 import TwilioProvider from "../integrations/twilio/providers/twilioProvider.js";
 import XProvider from "../integrations/x/providers/xProvider.js";
@@ -21,9 +24,13 @@ export const ProviderRepository = {
   openai: OpenaiProvider,
   postgres: PostgresProvider,
   sandbox: SandboxProvider,
+  sheets: SheetsProvider,
+  sheet: SheetsProvider,
+  teams: TeamsProvider,
   telegram: TelegramProvider,
   twilio: TwilioProvider,
   apollo: ApolloProvider,
+  drive: DriveProvider,
 } as const;
 
 export type ProviderName = keyof typeof ProviderRepository;

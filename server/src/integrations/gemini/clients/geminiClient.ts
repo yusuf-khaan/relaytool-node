@@ -185,12 +185,14 @@ class GeminiClient extends AbstractGemini {
     console.log("Model request payload:\n", JSON.stringify(payload, null, 2));
     console.log("requestdata and schema data:\n", JSON.stringify({ requestData: request?.data, schemaData }, null, 2));
 
-    return this.sendGenerateContentRequest(
+    let res = await this.sendGenerateContentRequest(
       payload.model || process.env.GEMINI_MODEL || "gemini-2.5-flash",
       [
       { text: payload.text || "" },
       ],
     );
+  console.log("Model raw response:\n", JSON.stringify(res, null, 2));
+    return res;
   }
 
   async sendImageToModel(request: any): Promise<any> {

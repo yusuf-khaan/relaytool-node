@@ -17,7 +17,8 @@ class IntegrationService {
     if (typeof client[action] !== 'function') {
       throw new Error(`Action "${action}" not supported by provider "${name}"`);
     }
-    return await client[action](params);
+    const enrichedParams = this.attachExecutionContext(params);
+    return await client[action](enrichedParams);
   }
 
   async getProviderMetadata(names: ProviderName | ProviderName[]) {
@@ -27,6 +28,21 @@ class IntegrationService {
       const metadata = typeof provider.metadata === 'function' ? provider.metadata() : provider.metadata;
       return { provider: name, providerDetails: metadata };
     });
+  }
+
+  private attachExecutionContext(params: any) {
+    const safeParams = params ?? {};
+    const safeData = safeParams?.data && typeof safeParams.data === "object"
+      ? safeParams.data
+      : {};
+
+    return {
+      ...safeParams,
+      data: {
+        ...safeData,
+        __requestContext: safeParams,
+      },
+    };
   }
 }
 
