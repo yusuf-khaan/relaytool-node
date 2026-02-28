@@ -1,6 +1,7 @@
 import { NodeVM } from "vm2";
 import axios from "axios";
 import AbstractSandboxClient from "./abstractSandbox.js";
+import IntegrationDetailService from "../../../services/IntegrationDetailService.js";
 
 export interface SandboxResult {
   success: boolean;
@@ -31,9 +32,37 @@ class SandboxClient extends AbstractSandboxClient {
     "PATCH",
     "DELETE",
   ]);
+  private integrationDetailService = new IntegrationDetailService();
 
   constructor() {
     super();
+  }
+
+  resolveSchemaCustomLogic(customLogic: any, inputData: any): any {
+    if (!this.shouldExecuteCustomLogic(customLogic)) {
+      return customLogic;
+    }
+
+    const code = this.extractSchemaCustomLogicCode(customLogic);
+    if (!code) {
+      return null;
+    }
+
+    const vm = this.createVm(inputData ?? {}, 3000);
+    this.attachConsoleCapture(vm);
+    const wrappedCode = this.createSmartWrapper(code, {
+      asyncExecution: false,
+      exposeInputAlias: true,
+      exposeThirdPartyAlias: true,
+      exposeNodeDataHelpers: true,
+    });
+    const result = vm.run(wrappedCode)();
+    if (result && typeof result.then === "function") {
+      throw new Error(
+        "Async customLogic is not supported in schema mapping. Use sync logic only in schemaData.",
+      );
+    }
+    return result;
   }
 
   /**
@@ -55,54 +84,18 @@ class SandboxClient extends AbstractSandboxClient {
         throw new Error("Code cannot be empty");
       }
 
-      const inputData = request?.data || {};  // <-- this is the real payload
-      const vm = new NodeVM({
-        console: "redirect",
-        timeout: 5000,
-        eval: false,
-        wasm: false,
-        require: false,
-        sandbox: {
-          __jsonPayload: inputData,
-          getJsonPayloadRecieved: () => inputData,
-          __callThirdParty: (payload: ThirdPartyRequest) => this.callThirdParty(payload),
-        }
+      const inputData = request?.data || {};
+      const vm = this.createVm(inputData, 5000);
+      this.attachConsoleCapture(vm);
+
+      const wrappedCode = this.createSmartWrapper(code, {
+        asyncExecution: true,
+        exposeInputAlias: false,
+        exposeThirdPartyAlias: false,
+        exposeNodeDataHelpers: true,
       });
-
-
-      let consoleOutput: any[] = [];
-      vm.on("console.log", (...args) => {
-        const out = args.map(a => {
-          if (a === null) return null;
-
-          if (typeof a === "object") {
-            // Return object directly
-            try {
-              return JSON.parse(JSON.stringify(a));
-            } catch (e) {
-              return "[Unserializable Object]";
-            }
-          }
-
-          if (typeof a === "string") return a;
-          if (typeof a === "number") return a;
-          if (typeof a === "boolean") return a;
-
-          return String(a); // fallback for symbols/functions
-        });
-
-        // If only 1 argument, return that argument directly.
-        consoleOutput.push(out.length === 1 ? out[0] : out);
-      });
-
-
-      vm.on("console.error", (...args) => consoleOutput.push('ERROR: ' + args.join(' ')));
-      vm.on("console.warn", (...args) => consoleOutput.push('WARN: ' + args.join(' ')));
-      vm.on("console.info", (...args) => consoleOutput.push('INFO: ' + args.join(' ')));
-
-      const wrappedCode = this.createSmartWrapper(code);
       const result = await vm.run(wrappedCode)();
-      const executionTime = Date.now() - startTime;
+      void startTime;
 
       // return {
       //   success: true,
@@ -112,14 +105,14 @@ class SandboxClient extends AbstractSandboxClient {
       // };
       return result;
     } catch (err: any) {
-      const executionTime = Date.now() - startTime;
+      void startTime;
       // return {
       //   success: false,
       //   error: err.message || "An error occurred while executing the code",
       //   console: [],
       //   executionTime,
       // };
-      return {error : (err.message || "An error occurred while executing the code")};
+      return { error: (err.message || "An error occurred while executing the code") };
     }
   }
 
@@ -134,22 +127,92 @@ class SandboxClient extends AbstractSandboxClient {
     return String(input);
   }
 
+  private shouldExecuteCustomLogic(customLogic: any): boolean {
+    if (!customLogic) return false;
+
+    if (typeof customLogic === "string") {
+      const trimmed = customLogic.trim().toLowerCase();
+      return trimmed.startsWith("js:") || trimmed.startsWith("javascript:");
+    }
+
+    if (typeof customLogic === "object") {
+      const mode = String(
+        customLogic?.type ??
+        customLogic?.mode ??
+        customLogic?.language ??
+        "",
+      )
+        .trim()
+        .toLowerCase();
+
+      return (
+        mode === "js" ||
+        mode === "javascript" ||
+        (typeof customLogic?.code === "string" &&
+          customLogic.code.trim().length > 0)
+      );
+    }
+
+    return false;
+  }
+
+  private extractSchemaCustomLogicCode(customLogic: any): string {
+    if (typeof customLogic === "string") {
+      const trimmed = customLogic.trim();
+      if (/^javascript:/i.test(trimmed)) {
+        return trimmed.replace(/^javascript:/i, "").trim();
+      }
+      if (/^js:/i.test(trimmed)) {
+        return trimmed.replace(/^js:/i, "").trim();
+      }
+      return "";
+    }
+
+    if (
+      typeof customLogic === "object" &&
+      typeof customLogic?.code === "string"
+    ) {
+      return customLogic.code.trim();
+    }
+
+    return "";
+  }
+
   /**
    * Smart wrapper that detects and handles both expressions and return statements
    */
-  private createSmartWrapper(code: string): string {
+  private createSmartWrapper(
+    code: string,
+    options: {
+      asyncExecution: boolean;
+      exposeInputAlias: boolean;
+      exposeThirdPartyAlias: boolean;
+      exposeNodeDataHelpers: boolean;
+    },
+  ): string {
     const clean = code.trim();
+    const asyncKeyword = options.asyncExecution ? "async " : "";
+    const awaitKeyword = options.asyncExecution ? "await " : "";
+    const inputAlias = options.exposeInputAlias
+      ? "\n  const input = __jsonPayload;"
+      : "";
+    const thirdPartyAlias = options.exposeThirdPartyAlias
+      ? "\n  globalThis.__callThirdParty = (payload) => __callThirdParty(payload);"
+      : "";
+    const nodeDataHelpers = options.exposeNodeDataHelpers
+      ? "\n  globalThis.getNodeInputData = (nodeId) => __getNodeInputData(nodeId);\n  globalThis.getNodeOutputData = (nodeId) => __getNodeOutputData(nodeId);"
+      : "";
 
     return `
-module.exports = async () => {
+module.exports = ${asyncKeyword}() => {
   globalThis.getJsonPayloadRecieved = () => __jsonPayload;
   globalThis.callThirdParty = (payload) => __callThirdParty(payload);
+  ${thirdPartyAlias}${inputAlias}${nodeDataHelpers}
 
   let __result;
 
   try {
-    // Run user code in async scope so top-level await inside customLogic works.
-    __result = await (async function() {
+    __result = ${awaitKeyword}(${asyncKeyword}function() {
       ${clean}
     })();
   } catch (err) {
@@ -159,6 +222,76 @@ module.exports = async () => {
   return __result;
 };
 `;
+  }
+
+  private createVm(inputData: any, timeout: number): NodeVM {
+    return new NodeVM({
+      console: "redirect",
+      timeout,
+      eval: false,
+      wasm: false,
+      require: false,
+      sandbox: {
+        __jsonPayload: inputData,
+        getJsonPayloadRecieved: () => inputData,
+        __callThirdParty: (payload: ThirdPartyRequest) =>
+          this.callThirdParty(payload),
+        __getNodeInputData: (nodeId: any) =>
+          this.getExecutionNodeData(inputData, nodeId, true),
+        __getNodeOutputData: (nodeId: any) =>
+          this.getExecutionNodeData(inputData, nodeId, false),
+      },
+    });
+  }
+
+  private async getExecutionNodeData(
+    requestContext: any,
+    nodeId: any,
+    wantInput: boolean,
+  ): Promise<any> {
+    return this.integrationDetailService.getExecutionNodeData(
+      requestContext,
+      nodeId,
+      wantInput,
+    );
+  }
+
+  private attachConsoleCapture(vm: NodeVM): any[] {
+    const consoleOutput: any[] = [];
+
+    vm.on("console.log", (...args) => {
+      const out = args.map((a) => {
+        if (a === null) return null;
+
+        if (typeof a === "object") {
+          try {
+            return JSON.parse(JSON.stringify(a));
+          } catch {
+            return "[Unserializable Object]";
+          }
+        }
+
+        if (typeof a === "string") return a;
+        if (typeof a === "number") return a;
+        if (typeof a === "boolean") return a;
+
+        return String(a);
+      });
+
+      consoleOutput.push(out.length === 1 ? out[0] : out);
+    });
+
+    vm.on("console.error", (...args) =>
+      consoleOutput.push("ERROR: " + args.join(" ")),
+    );
+    vm.on("console.warn", (...args) =>
+      consoleOutput.push("WARN: " + args.join(" ")),
+    );
+    vm.on("console.info", (...args) =>
+      consoleOutput.push("INFO: " + args.join(" ")),
+    );
+
+    return consoleOutput;
   }
 
   private async callThirdParty(payload: ThirdPartyRequest): Promise<any> {
@@ -276,42 +409,6 @@ module.exports = async () => {
     }
 
     return false;
-  }
-
-
-
-
-
-  /**
-   * Detect if code contains return statement at top level
-   */
-  private hasReturnStatement(code: string): boolean {
-    // Simple detection for return statements that are not inside strings or comments
-    const returnRegex = /(^|\s)return\s+/;
-    return returnRegex.test(code) && !this.isInStringOrComment(code, returnRegex);
-  }
-
-  /**
-   * Check if a pattern is inside a string or comment
-   */
-  private isInStringOrComment(code: string, pattern: RegExp): boolean {
-    // Simple check - if the code has strings or comments before the pattern
-    // This is a basic implementation and might need refinement for complex cases
-    const match = code.match(pattern);
-    if (!match) return false;
-
-    const index = match.index!;
-    const before = code.substring(0, index);
-
-    // Check for unclosed strings or comments
-    const singleQuotes = (before.match(/'/g) || []).length;
-    const doubleQuotes = (before.match(/"/g) || []).length;
-    const backticks = (before.match(/`/g) || []).length;
-    const lineComments = (before.match(/\/\//g) || []).length;
-    const blockComments = (before.match(/\/\*/g) || []).length - (before.match(/\*\//g) || []).length;
-
-    return (singleQuotes % 2 === 1) || (doubleQuotes % 2 === 1) || (backticks % 2 === 1) ||
-      (lineComments > 0) || (blockComments > 0);
   }
 
   /**

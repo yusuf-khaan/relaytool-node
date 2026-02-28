@@ -30,8 +30,10 @@ class AuthController {
         if (integration === "gmail") {
             return this.authService.gmailConsent(res, encodedState);
         }
-        else if( integration === "sheet"){
-
+        else if( integration === "sheet" || integration === "sheets"){
+            return this.authService.sheetConsent(res, encodedState);
+        } else if( integration === "drive") {
+            return this.authService.driveConsent(res, encodedState);
         } else if( integration === "facebook") {
             return this.authService.facebookConsent(res, encodedState);
         }
